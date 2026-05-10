@@ -3,8 +3,8 @@ import { useEffect, useState } from 'react'
 import { createClient } from '@supabase/supabase-js'
 import { useParams, useRouter } from 'next/navigation'
 
-const SB_URL = "https://ezliayzfvvlmzhydcclt.supabase.co"
-const SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImV6bGlheXpmdnZsbXpoeWRjY2x0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzMwNDc0NjQsImV4cCI6MjA4ODYyMzQ2NH0.d5z4gNhxDulmZOol_fcEEmQNLNflejoLLuxxzRAmF9I"
+const SB_URL = "https://fzqdniqalrderusvvfre.supabase.co"
+const SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZ6cWRuaXFhbHJkZXJ1c3Z2ZnJlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgzNDk0MjMsImV4cCI6MjA5MzkyNTQyM30.xvMMaTl730ER9vDWiwrFklPliuDkc2PkwikEgH5nn3w"
 const supabase = createClient(SB_URL, SB_KEY)
 
 // CONFIGURATION
