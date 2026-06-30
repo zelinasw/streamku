@@ -7,4 +7,4 @@ compatibility_flags = [ "nodejs_compat" ]
 [[d1_databases]]
 binding = "DB" # Nama ini harus sama dengan process.env.DB di API route tadi
 database_name = "streamku-db" # Ganti dengan nama database D1 yang kamu buat di dashboard
-database_id = "ISI_DENGAN_ID_DATABASE_D1_KAMU"
+database_id = "9bbac7f6-3c19-4631-9c16-15309f308a28"
