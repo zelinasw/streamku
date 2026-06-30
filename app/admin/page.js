@@ -1,11 +1,9 @@
 "use client"
-import { useEffect, useState } from 'react'
-import { createClient } from '@supabase/supabase-js'
+export const runtime = 'edge';
 
-const SB_URL = "https://fzqdniqalrderusvvfre.supabase.co"
-const SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZ6cWRuaXFhbHJkZXJ1c3Z2ZnJlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgzNDk0MjMsImV4cCI6MjA5MzkyNTQyM30.xvMMaTl730ER9vDWiwrFklPliuDkc2PkwikEgH5nn3w"
+import { useEffect, useState } from 'react'
+
 const PASSWORD_ADMIN = "130903" 
-const supabase = createClient(SB_URL, SB_KEY)
 
 export default function Admin() {
   const [isLoggedIn, setIsLoggedIn] = useState(false)
@@ -23,49 +21,104 @@ export default function Admin() {
 
   useEffect(() => {
     const pass = prompt("Masukkan Password Admin:");
-    if (pass === PASSWORD_ADMIN) { setIsLoggedIn(true); fetchVideos(); } 
-    else { alert("Akses Ditolak!"); window.location.href = "/" }
+    if (pass === PASSWORD_ADMIN) { 
+      setIsLoggedIn(true); 
+      fetchVideos(); 
+    } else { 
+      alert("Akses Ditolak!"); 
+      window.location.href = "/" 
+    }
   }, [])
 
+  // Mengambil daftar film dari Cloudflare D1
   const fetchVideos = async () => {
-    const { data } = await supabase.from('videos').select('*').order('id', { ascending: false })
-    if (data) setVideos(data)
+    try {
+      const res = await fetch('/api/videos')
+      const data = await res.json()
+      if (Array.isArray(data)) setVideos(data)
+    } catch (err) {
+      console.error("Gagal mengambil data database:", err)
+    }
   }
 
+  // Sinkronisasi Doodstream menggunakan database Cloudflare D1
   const syncDoodstream = async () => {
     setLoading(true);
     try {
-      const res = await fetch('/api/dood');
+      const res = await fetch('/api/doodstream'); // Route internal Doodstream kita
       const resData = await res.json();
       if (resData.status === 200) {
-        const { data: existing } = await supabase.from('videos').select('url');
-        const existingUrls = existing.map(v => v.url);
-        const newFiles = resData.result.files.filter(f => !existingUrls.includes(`https://doodstream.com/e/${f.file_code}`));
+        // Ambil link video yang sudah terdaftar di D1
+        const existingUrls = videos.map(v => v.url);
+        
+        // Filter video baru dari Doodstream yang belum ada di database
+        const newFiles = resData.result.files.filter(f => 
+          !existingUrls.includes(`https://doodstream.com/e/${f.file_code}`)
+        );
+        
         if (newFiles.length === 0) return alert("Semua video terbaru sudah ada!");
+        
         const limitedFiles = newFiles.slice(0, limitSync);
         const toInsert = limitedFiles.map(f => ({
           title: f.title,
           url: `https://doodstream.com/e/${f.file_code}`,
           thumbnail: `https://thumbcdn.com/snaps/${f.file_code}.jpg`
         }));
-        await supabase.from('videos').insert(toInsert);
-        alert(`Berhasil sinkron ${limitedFiles.length} video baru!`);
+
+        // Kirim data ke API batch insert internal kita
+        const insertRes = await fetch('/api/videos/add-bulk', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ videos: toInsert })
+        });
+        
+        const insertData = await insertRes.json();
+        if (insertRes.status === 200) {
+          alert(`Berhasil sinkron ${limitedFiles.length} video baru!`);
+        } else {
+          alert(`Gagal sinkron: ${insertData.msg}`);
+        }
         fetchVideos();
       }
-    } catch (err) { alert("Error Sync: " + err.message); }
-    finally { setLoading(false); }
+    } catch (err) { 
+      alert("Error Sync: " + err.message); 
+    } finally { 
+      setLoading(false); 
+    }
   }
 
+  // Handle Simpan Tambah & Edit ke Cloudflare D1
   const handleSimpan = async (e) => {
     e.preventDefault();
-    if (editId) {
-      await supabase.from('videos').update({ title: judul, url: linkVideo, thumbnail: linkPoster }).eq('id', editId);
-      alert("Berhasil diupdate!"); setEditId(null);
-    } else {
-      await supabase.from('videos').insert([{ title: judul, url: linkVideo, thumbnail: linkPoster }]);
-      alert("Berhasil ditambah!");
+    setLoading(true);
+    try {
+      if (editId) {
+        // Mode Edit
+        const res = await fetch(`/api/videos/update`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id: editId, title: judul, url: linkVideo, thumbnail: linkPoster })
+        });
+        if (res.status === 200) {
+          alert("Berhasil diupdate!"); 
+          setEditId(null);
+        }
+      } else {
+        // Mode Tambah Baru
+        const res = await fetch('/api/videos/add', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ title: judul, url: linkVideo, thumbnail: linkPoster })
+        });
+        if (res.status === 200) alert("Berhasil ditambah!");
+      }
+      setJudul(''); setLinkVideo(''); setLinkPoster(''); 
+      fetchVideos();
+    } catch (err) {
+      alert("Gagal menyimpan data: " + err.message);
+    } finally {
+      setLoading(false);
     }
-    setJudul(''); setLinkVideo(''); setLinkPoster(''); fetchVideos();
   };
 
   const handleEditKlik = (v) => {
@@ -73,8 +126,22 @@ export default function Admin() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
+  // Handle Hapus di D1 via API internal
   const handleHapus = async (id) => {
-    if (confirm("Hapus video ini?")) { await supabase.from('videos').delete().eq('id', id); fetchVideos(); }
+    if (confirm("Hapus video ini?")) { 
+      try {
+        const res = await fetch(`/api/videos/delete`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id })
+        });
+        if (res.status === 200) {
+          fetchVideos();
+        }
+      } catch (err) {
+        alert("Gagal menghapus: " + err.message);
+      }
+    }
   };
 
   const handleSalinLink = (id) => {
@@ -83,7 +150,7 @@ export default function Admin() {
     alert("Link nonton berhasil disalin!");
   };
 
-  // --- FITUR BARU: MULTI SELECT & BULK COPY ---
+  // --- FITUR MULTI SELECT & BULK COPY (TETAP TERJAGA) ---
   const toggleSelect = (id) => {
     setSelectedIds(prev => 
       prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]
@@ -117,21 +184,21 @@ export default function Admin() {
 
   return (
     <div style={{ padding: '20px', background: '#000', color: '#fff', minHeight: '100vh', fontFamily: 'sans-serif' }}>
-      <h1>🛠 Admin Panel v5.3</h1>
+      <h1>🛠 Admin Panel v5.3 (Cloudflare D1 Ready)</h1>
       
       <div style={{ display: 'flex', gap: '20px', flexWrap: 'wrap', marginBottom: '30px' }}>
         <div style={{ flex: 1, minWidth: '300px', background: '#111', padding: '20px', borderRadius: '10px', border: editId ? '2px solid #3498db' : 'none' }}>
           <h3>{editId ? "📝 Mode Edit Video" : "➕ Tambah Manual"}</h3>
-          <input placeholder="Judul" value={judul} onChange={e => setJudul(e.target.value)} style={{ width: '100%', padding: '10px', marginBottom: '10px', color: '#000', borderRadius: '5px' }} />
-          <input placeholder="Link Video" value={linkVideo} onChange={e => setLinkVideo(e.target.value)} style={{ width: '100%', padding: '10px', marginBottom: '10px', color: '#000', borderRadius: '5px' }} />
-          <input placeholder="Link Thumbnail" value={linkPoster} onChange={e => setLinkPoster(e.target.value)} style={{ width: '100%', padding: '10px', marginBottom: '10px', color: '#000', borderRadius: '5px' }} />
+          <input placeholder="Judul" value={judul} onChange={e => setJudul(e.target.value)} style={{ width: '100%', padding: '10px', marginBottom: '10px', color: '#000', borderRadius: '5px', border: 'none' }} />
+          <input placeholder="Link Video" value={linkVideo} onChange={e => setLinkVideo(e.target.value)} style={{ width: '100%', padding: '10px', marginBottom: '10px', color: '#000', borderRadius: '5px', border: 'none' }} />
+          <input placeholder="Link Thumbnail" value={linkPoster} onChange={e => setLinkPoster(e.target.value)} style={{ width: '100%', padding: '10px', marginBottom: '10px', color: '#000', borderRadius: '5px', border: 'none' }} />
           <button onClick={handleSimpan} style={{ width: '100%', padding: '12px', background: '#E50914', color: '#fff', border: 'none', cursor: 'pointer', fontWeight: 'bold', borderRadius: '5px' }}>{editId ? "UPDATE SEKARANG" : "SIMPAN MANUAL"}</button>
           {editId && <button onClick={() => { setEditId(null); setJudul(''); setLinkVideo(''); setLinkPoster(''); }} style={{ width: '100%', padding: '12px', background: '#444', color: '#fff', border: 'none', cursor: 'pointer', borderRadius: '5px', marginTop: '5px' }}>BATAL</button>}
         </div>
 
         <div style={{ flex: 0.7, minWidth: '300px', background: '#111', padding: '20px', borderRadius: '10px' }}>
           <h3>🚀 Tarik Video API</h3>
-          <input type="number" value={limitSync} onChange={e => setLimitSync(e.target.value)} style={{ width: '100%', padding: '10px', marginTop: '5px', color: '#000', borderRadius: '5px' }} />
+          <input type="number" value={limitSync} onChange={e => setLimitSync(e.target.value)} style={{ width: '100%', padding: '10px', marginTop: '5px', color: '#000', borderRadius: '5px', border: 'none' }} />
           <button onClick={syncDoodstream} disabled={loading} style={{ width: '100%', padding: '15px', background: '#3498db', color: '#fff', border: 'none', borderRadius: '5px', fontWeight: 'bold', cursor: 'pointer', marginTop: '10px' }}>{loading ? "MENARIK DATA..." : `SYNC ${limitSync} VIDEO BARU`}</button>
         </div>
       </div>
@@ -171,7 +238,7 @@ export default function Admin() {
             </div>
 
             <div style={{ width: '100%', height: '110px', background: '#000', borderRadius: '5px', overflow: 'hidden', marginBottom: '10px' }}>
-                <img src={`https://images.weserv.nl/?url=${encodeURIComponent(v.thumbnail)}&w=300`} style={{ width: '100%', height: '100%', objectFit: 'cover' }} onError={(e) => e.target.src="https://via.placeholder.com/200x110"} />
+                <img src={`https://images.weserv.nl/?url=${encodeURIComponent(v.thumbnail)}&w=300`} style={{ width: '100%', height: '100%', objectFit: 'cover' }} referrerPolicy="no-referrer" alt="" />
             </div>
             <p style={{ fontSize: '0.75rem', height: '2.5em', overflow: 'hidden', margin: '5px 0' }}>{v.title}</p>
             
