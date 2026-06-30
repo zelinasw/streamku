@@ -6,7 +6,7 @@ import { useEffect, useState, use } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 
 // CONFIGURATION (Monetisasi & Channel Tetap Aman)
-const TELEGRAM_CHANNEL = "https://t.me/+d9TcoaiEqwQ3M2U1" 
+const TELEGRAM_CHANNEL = "https://t.me/+Az4uGyWA9Q5kNTI1" 
 const ADSTERRA_LINK = "https://www.effectivegatecpm.com/hg27i5eg6?key=58350889f5d56c4a6e8d2eaf93afe9aa"
 const SHOPEE_1 = "https://s.shopee.co.id/8zzw008PFz"
 const SHOPEE_2 = "https://s.shopee.co.id/4qAUISsBIg"
