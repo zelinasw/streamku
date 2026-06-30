@@ -1,6 +1,7 @@
 import "./globals.css";
 import Script from "next/script";
 
+// TINGGAL GANTI LINK TELEGRAM BARUMU DI SINI, OTOMATIS BERUBAH GLOBAL!
 const TELEGRAM_LINK = "https://t.me/+Az4uGyWA9Q5kNTI1";
 
 export const metadata = {
@@ -12,17 +13,11 @@ export default function RootLayout({ children }) {
   return (
     <html lang="id">
       <head>
-        {/* OPTIMASI KONEKSI (DNS PREFETCH & PRECONNECT) */}
-        <link rel="dns-prefetch" href="https://pl28804322.effectivegatecpm.com" />
-        <link rel="dns-prefetch" href="https://s10.histats.com" />
+        {/* OPTIMASI KONEKSI (DIBERSIHKAN TANPA HTTP/HTTPS) */}
+        <link rel="dns-prefetch" href="//pl28804322.effectivegatecpm.com" />
+        <link rel="dns-prefetch" href="//s10.histats.com" />
         <link rel="preconnect" href="https://pl28804322.effectivegatecpm.com" crossOrigin="anonymous" />
         <link rel="preconnect" href="https://images.weserv.nl" crossOrigin="anonymous" />
-
-        {/* IKLAN ADSTERRA - Siap tempur sebelum interaksi */}
-        <Script 
-          src="https://pl28804322.effectivegatecpm.com/19/e6/a7/19e6a7bd62bc2b7a01520f263322c8af.js" 
-          strategy="beforeInteractive" 
-        />
 
         {/* HISTATS - Statistik pengunjung */}
         <Script id="histats-async" strategy="afterInteractive">
@@ -42,7 +37,14 @@ export default function RootLayout({ children }) {
       <body style={{ margin: 0, backgroundColor: '#000', color: '#fff', minHeight: '100vh' }}>
         {children}
 
-        {/* TOMBOL TELEGRAM MELAYANG */}
+        {/* FIX IKLAN ADSTERRA POP-UNDER: Dipindahkan ke dalam body dengan strategy 'afterInteractive' */}
+        {/* Supaya script bisa mendeteksi klik user di layar dan memicu pop-under secara agresif */}
+        <Script 
+          src="https://pl28804322.effectivegatecpm.com/19/e6/a7/19e6a7bd62bc2b7a01520f263322c8af.js" 
+          strategy="afterInteractive" 
+        />
+
+        {/* TOMBOL TELEGRAM MELAYANG (Link otomatis ikut variabel di atas) */}
         <div style={{ position: 'fixed', bottom: '25px', right: '20px', zIndex: 10000 }}>
           <a 
             href={TELEGRAM_LINK}
