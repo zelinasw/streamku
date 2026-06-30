@@ -1,20 +1,23 @@
 {
-  "name": "web-streaming-ku",
+  "name": "streamku",
   "version": "0.1.0",
   "private": true,
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "start": "next start"
+    "start": "next start",
+    "lint": "next lint",
+    "pages:build": "npx @cloudflare/next-on-pages"
   },
   "dependencies": {
     "next": "latest",
     "react": "latest",
-    "react-dom": "latest",
-    "@supabase/supabase-js": "latest",
-    "tailwindcss": "latest",
-    "@tailwindcss/postcss": "latest",
+    "react-dom": "latest"
+  },
+  "devDependencies": {
+    "@cloudflare/next-on-pages": "latest",
     "postcss": "latest",
-    "autoprefixer": "latest"
+    "tailwindcss": "latest",
+    "vercel": "latest"
   }
 }
