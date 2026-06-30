@@ -45,9 +45,11 @@ export default function Admin() {
   const syncDoodstream = async () => {
     setLoading(true);
     try {
-      const res = await fetch('/api/doodstream'); // Route internal Doodstream kita
+      // FIX: Mengubah rute panggilah sesuai dengan folder API repositori kamu (/api/dood)
+      const res = await fetch('/api/dood'); 
       const resData = await res.json();
-      if (resData.status === 200) {
+      
+      if (resData.status === 200 || (resData.result && resData.result.files)) {
         // Ambil link video yang sudah terdaftar di D1
         const existingUrls = videos.map(v => v.url);
         
@@ -79,6 +81,8 @@ export default function Admin() {
           alert(`Gagal sinkron: ${insertData.msg}`);
         }
         fetchVideos();
+      } else {
+        alert("Gagal sinkron: Format data API Doodstream tidak sesuai.");
       }
     } catch (err) { 
       alert("Error Sync: " + err.message); 
