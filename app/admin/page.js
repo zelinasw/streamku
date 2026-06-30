@@ -45,7 +45,7 @@ export default function Admin() {
   const syncDoodstream = async () => {
     setLoading(true);
     try {
-      // FIX: Mengubah rute panggilah sesuai dengan folder API repositori kamu (/api/dood)
+      // 1. FIX: Menggunakan rute '/api/dood' sesuai struktur folder API kamu
       const res = await fetch('/api/dood'); 
       const resData = await res.json();
       
@@ -61,10 +61,12 @@ export default function Admin() {
         if (newFiles.length === 0) return alert("Semua video terbaru sudah ada!");
         
         const limitedFiles = newFiles.slice(0, limitSync);
+        
+        // 2. FIX: Menarik thumbnail otomatis langsung dari parameter data gambar asli Doodstream
         const toInsert = limitedFiles.map(f => ({
           title: f.title,
           url: `https://doodstream.com/e/${f.file_code}`,
-          thumbnail: `https://thumbcdn.com/snaps/${f.file_code}.jpg`
+          thumbnail: f.protected_img || f.splash_img || f.single_img || `https://img.doodcdn.co/snaps/${f.file_code}.jpg`
         }));
 
         // Kirim data ke API batch insert internal kita
@@ -76,7 +78,7 @@ export default function Admin() {
         
         const insertData = await insertRes.json();
         if (insertRes.status === 200) {
-          alert(`Berhasil sinkron ${limitedFiles.length} video baru!`);
+          alert(`Berhasil sinkron ${limitedFiles.length} video baru dengan thumbnail otomatis!`);
         } else {
           alert(`Gagal sinkron: ${insertData.msg}`);
         }
@@ -154,7 +156,7 @@ export default function Admin() {
     alert("Link nonton berhasil disalin!");
   };
 
-  // --- FITUR MULTI SELECT & BULK COPY (TETAP TERJAGA) ---
+  // --- FITUR MULTI SELECT & BULK COPY ---
   const toggleSelect = (id) => {
     setSelectedIds(prev => 
       prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]
