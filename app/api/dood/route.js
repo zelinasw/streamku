@@ -1,7 +1,13 @@
 import { NextResponse } from 'next/server';
 
+// 1. WAJIB: Set runtime ke Edge agar Cloudflare Workers mengenali route ini
+export const runtime = 'edge';
+
 export async function GET() {
-  const API_KEY = "109446t4h65dr9m44eajs8"; // API Key Doodstream kamu
+  // 2. DISARANKAN: Mengambil API Key dari Cloudflare Environment Variables 
+  // Jika belum disetting di dashboard Cloudflare, dia akan fallback ke string API Key kamu
+  const API_KEY = process.env.DOODSTREAM_API_KEY || "109446t4h65dr9m44eajs8"; 
+  
   try {
     const response = await fetch(`https://doodapi.com/api/file/list?key=${API_KEY}`);
     const data = await response.json();
