@@ -17,6 +17,7 @@
   "devDependencies": {
     "@cloudflare/next-on-pages": "latest",
     "@tailwindcss/postcss": "latest",
+    "autoprefixer": "latest",
     "postcss": "latest",
     "tailwindcss": "latest",
     "vercel": "latest"
