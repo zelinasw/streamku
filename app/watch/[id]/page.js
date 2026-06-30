@@ -1,27 +1,28 @@
 "use client"
-import { useEffect, useState } from 'react'
-import { createClient } from '@supabase/supabase-js'
+// 1. Set runtime Edge untuk sinkronisasi optimal di Cloudflare
+export const runtime = 'edge';
+
+import { useEffect, useState, use } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 
-const SB_URL = "https://fzqdniqalrderusvvfre.supabase.co"
-const SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZ6cWRuaXFhbHJkZXJ1c3Z2ZnJlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgzNDk0MjMsImV4cCI6MjA5MzkyNTQyM30.xvMMaTl730ER9vDWiwrFklPliuDkc2PkwikEgH5nn3w"
-const supabase = createClient(SB_URL, SB_KEY)
-
-// CONFIGURATION
+// CONFIGURATION (Monetisasi & Channel Tetap Aman)
 const TELEGRAM_CHANNEL = "https://t.me/+d9TcoaiEqwQ3M2U1" 
 const ADSTERRA_LINK = "https://www.effectivegatecpm.com/hg27i5eg6?key=58350889f5d56c4a6e8d2eaf93afe9aa"
 const SHOPEE_1 = "https://s.shopee.co.id/8zzw008PFz"
 const SHOPEE_2 = "https://s.shopee.co.id/4qAUISsBIg"
 const LIMIT_POPUP = 3; 
 
-export default function WatchPage() {
-  const { id } = useParams()
+export default function WatchPage({ params }) {
+  // Membuka params Next.js App Router terbaru secara aman
+  const { id } = use(params)
   const router = useRouter()
+  
   const [video, setVideo] = useState(null)
   const [related, setRelated] = useState([])
   const [currentUrl, setCurrentUrl] = useState('')
   const [searchTerm, setSearchTerm] = useState('')
   const [showAgePopup, setShowAgePopup] = useState(false)
+  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     if (id) {
@@ -32,14 +33,36 @@ export default function WatchPage() {
     }
   }, [id])
 
+  // 2. Mengambil detail satu video via API D1 internal
   const fetchVideoDetail = async () => {
-    const { data } = await supabase.from('videos').select('*').eq('id', id).single()
-    if (data) setVideo(data)
+    try {
+      const response = await fetch(`/api/videos/${id}`)
+      if (response.status === 200) {
+        const data = await response.json()
+        setVideo(data)
+        if (data.title) document.title = data.title
+      }
+    } catch (error) {
+      console.error("Gagal memuat detail video:", error)
+    } finally {
+      setLoading(false)
+    }
   }
 
+  // 3. Mengambil daftar video rekomendasi via API D1 internal
   const fetchRelated = async () => {
-    const { data } = await supabase.from('videos').select('*').limit(12).order('id', { ascending: false })
-    if (data) setRelated(data.filter(v => v.id != id))
+    try {
+      const response = await fetch('/api/videos')
+      if (response.status === 200) {
+        const data = await response.json()
+        if (Array.isArray(data)) {
+          // Filter agar video yang sedang ditonton tidak masuk daftar rekomendasi
+          setRelated(data.filter(v => v.id != id).slice(0, 12))
+        }
+      }
+    } catch (error) {
+      console.error("Gagal memuat rekomendasi:", error)
+    }
   }
 
   const checkPopupLimit = () => {
@@ -84,6 +107,7 @@ export default function WatchPage() {
   }
 
   const shareTo = (platform) => {
+    if (!video) return;
     const text = `Nonton ${video.title} gratis di sini! 🍿`
     const url = encodeURIComponent(currentUrl)
     let shareUrl = ""
@@ -108,11 +132,14 @@ export default function WatchPage() {
       .replace('dood.re', 'playmogo.com');
   }
 
-  if (!video) return <div style={{ background: '#000', height: '100vh', color: '#fff', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>Memuat Video...</div>
+  if (loading) return <div style={{ background: '#000', height: '100vh', color: '#fff', display: 'flex', justifyContent: 'center', alignItems: 'center', fontFamily: 'sans-serif' }}>Memuat Video...</div>
+
+  if (!video) return <div style={{ background: '#000', height: '100vh', color: '#fff', display: 'flex', justifyContent: 'center', alignItems: 'center', fontFamily: 'sans-serif' }}>⚠️ Video tidak ditemukan atau database kosong.</div>
 
   return (
     <div style={{ backgroundColor: '#000', color: '#fff', minHeight: '100vh', fontFamily: 'sans-serif', position: 'relative' }}>
       
+      {/* AGE POPUP (ADS TRIGGER) */}
       {showAgePopup && (
         <div style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: 'rgba(0,0,0,0.98)', zIndex: 99999, display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '20px' }}>
           <div style={{ background: '#111', padding: '30px', borderRadius: '15px', textAlign: 'center', maxWidth: '400px', border: '1px solid #E50914', boxShadow: '0 0 40px rgba(229, 9, 20, 0.4)' }}>
@@ -123,6 +150,7 @@ export default function WatchPage() {
         </div>
       )}
 
+      {/* STICKY NAVBAR */}
       <nav style={{ padding: '10px 5%', background: '#000', borderBottom: '1px solid #222', display: 'flex', justifyContent: 'space-between', alignItems: 'center', position: 'sticky', top: 0, zIndex: 100 }}>
         <a href="/" style={{ color: '#E50914', textDecoration: 'none', fontWeight: 'bold' }}>← BERANDA</a>
         <form onSubmit={handleSearch}>
@@ -130,16 +158,20 @@ export default function WatchPage() {
         </form>
       </nav>
 
+      {/* CONTAINER CONTENT */}
       <div style={{ padding: '20px 5%', maxWidth: '1000px', margin: '0 auto' }}>
+        
+        {/* IFRAME PLAYER */}
         <div style={{ position: 'relative', paddingTop: '56.25%', background: '#111', borderRadius: '12px', overflow: 'hidden', boxShadow: '0 0 20px rgba(229, 9, 20, 0.2)' }}>
           <iframe 
-            src={getCleanUrl(video.url)} 
+            src={getCleanUrl(video.url || video.thumbnail)} // fallback jika field database berupa url langsung atau id
             style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', border: 'none' }} 
             allowFullScreen 
             referrerPolicy="no-referrer"
           />
         </div>
 
+        {/* BUTTON CUAN TRICK */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '20px' }}>
           <button onClick={handleCuanClick} style={{ background: 'linear-gradient(90deg, #FFD700, #FFA500)', color: '#000', textAlign: 'center', padding: '16px', borderRadius: '8px', border: 'none', fontWeight: 'bold', fontSize: '1rem', cursor: 'pointer', boxShadow: '0 4px 15px rgba(255, 215, 0, 0.3)', textTransform: 'uppercase' }}>
             🔥 NONTON SERVER HD (FULL SPEED)
@@ -149,6 +181,7 @@ export default function WatchPage() {
           </button>
         </div>
 
+        {/* TG CHANNEL PROMO */}
         <div style={{ marginTop: '15px', background: 'linear-gradient(90deg, #0088cc, #00aaff)', padding: '15px', borderRadius: '10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div>
             <h4 style={{ margin: 0, fontSize: '0.9rem' }}>Update Film Terbaru?</h4>
@@ -157,6 +190,7 @@ export default function WatchPage() {
           <a href={TELEGRAM_CHANNEL} target="_blank" rel="noopener noreferrer" style={{ background: '#fff', color: '#0088cc', padding: '8px 15px', borderRadius: '5px', textDecoration: 'none', fontSize: '0.8rem', fontWeight: 'bold' }}>JOIN</a>
         </div>
 
+        {/* INFO UTAMA */}
         <div style={{ marginTop: '20px' }}>
           <h1 style={{ fontSize: '1.2rem', marginBottom: '15px' }}>{video.title}</h1>
           <div style={{ display: 'flex', gap: '8px', marginBottom: '20px', flexWrap: 'wrap' }}>
@@ -168,17 +202,19 @@ export default function WatchPage() {
           <div style={{ height: '1px', background: '#222', width: '100%', marginBottom: '30px' }}></div>
         </div>
 
+        {/* RELATED VIDEOS GRID */}
         <h3 style={{ fontSize: '1rem', color: '#E50914', marginBottom: '15px' }}>REKOMENDASI UNTUKMU</h3>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(130px, 1fr))', gap: '15px' }}>
           {related.map((v) => (
             <a href={`/watch/${v.id}`} key={v.id} style={{ textDecoration: 'none', color: 'inherit' }}>
               <div style={{ position: 'relative', paddingTop: '145%', background: '#111', borderRadius: '8px', overflow: 'hidden', border: '1px solid #222' }}>
-                <img src={`https://images.weserv.nl/?url=${encodeURIComponent(v.thumbnail)}&w=300`} referrerPolicy="no-referrer" style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', objectFit: 'cover' }} />
+                {v.thumbnail && <img src={`https://images.weserv.nl/?url=${encodeURIComponent(v.thumbnail)}&w=300`} referrerPolicy="no-referrer" style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', objectFit: 'cover' }} />}
               </div>
               <p style={{ fontSize: '0.7rem', marginTop: '8px', textAlign: 'center', height: '2.4em', overflow: 'hidden' }}>{v.title}</p>
             </a>
           ))}
         </div>
+
       </div>
     </div>
   )
